@@ -1,0 +1,63 @@
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "nakprok"
+version = "0.1.0"
+description = "Python with enforced static typing"
+authors = ["Chaiwat Suttipongsakul <cwt@bashell.com>"]
+license = "MIT"
+readme = "README.md"
+homepage = "https://github.com/cwt/nakprok"
+repository = "https://github.com/cwt/nakprok"
+keywords = ["type-checking", "static-typing", "python"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^9.0.2"
+pytest-cov = "^7.1"
+pytest-xdist = "^3.8.0"
+black = "^26.3.1"
+ruff = "^0.15.6"
+mypy = "^1.19.1"
+
+[tool.poetry.scripts]
+nakprok = "nakprok.cli:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "--tb=short"
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+exclude = ["examples/"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
