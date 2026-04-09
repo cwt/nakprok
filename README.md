@@ -43,8 +43,8 @@ Think of it this way:
 You can (and should) run both:
 
 ```bash
-nakprok check file.py  # Enforces explicit typing
-mypy file.py           # Validates type correctness
+nakprok check .     # Enforces explicit typing
+mypy .              # Validates type correctness
 ```
 
 ---
@@ -160,10 +160,11 @@ pip install -e .
 # Check and run (default)
 nakprok file.py
 
-# Check types only
+# Check types only (file or directory)
 nakprok check file.py
+nakprok check src/
 
-# Explict run
+# Explicit run
 nakprok run file.py
 ```
 

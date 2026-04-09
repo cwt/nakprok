@@ -29,7 +29,7 @@ class TypeError:
     filename: str = ""
 
     def __str__(self) -> str:
-        location = f"{self.filename}:{self.line}:{self.column}"
+        location: str = f"{self.filename}:{self.line}:{self.column}"
         return f"{location}: error: {self.message}"
 
 
@@ -39,7 +39,7 @@ class StrictTypeChecker(ast.NodeVisitor):
     Rejects any code that lacks proper type hints.
     """
 
-    def __init__(self, filename: str = ""):
+    def __init__(self, filename: str = "") -> None:
         self.errors: list[TypeError] = []
         self.filename = filename
         self._in_function = False
@@ -65,6 +65,9 @@ class StrictTypeChecker(ast.NodeVisitor):
 
         self._validate_function(node)
 
+        old_fn: str
+        old_in_fn: bool
+        old_vars: set[str]
         old_fn = self._function_name
         old_in_fn = self._in_function
         old_vars = self._typed_vars
@@ -74,6 +77,7 @@ class StrictTypeChecker(ast.NodeVisitor):
         self._typed_vars = set()
 
         # Add parameters to typed variables
+        arg: ast.arg
         for arg in node.args.args:
             self._typed_vars.add(arg.arg)
             if arg.arg.isupper():
@@ -90,6 +94,7 @@ class StrictTypeChecker(ast.NodeVisitor):
                 self._assigned_constants.add(node.args.kwarg.arg)
 
         # Visit body
+        child: ast.AST
         for child in node.body:
             self.visit(child)
 
@@ -106,6 +111,9 @@ class StrictTypeChecker(ast.NodeVisitor):
 
         self._validate_function(node)
 
+        old_fn: str
+        old_in_fn: bool
+        old_vars: set[str]
         old_fn = self._function_name
         old_in_fn = self._in_function
         old_vars = self._typed_vars
@@ -115,6 +123,7 @@ class StrictTypeChecker(ast.NodeVisitor):
         self._typed_vars = set()
 
         # Add parameters
+        arg: ast.arg
         for arg in node.args.args:
             self._typed_vars.add(arg.arg)
             if arg.arg.isupper():
@@ -130,6 +139,7 @@ class StrictTypeChecker(ast.NodeVisitor):
             if node.args.kwarg.arg.isupper():
                 self._assigned_constants.add(node.args.kwarg.arg)
 
+        child: ast.AST
         for child in node.body:
             self.visit(child)
 
@@ -139,13 +149,14 @@ class StrictTypeChecker(ast.NodeVisitor):
 
     def _validate_function(self, node: ast.FunctionDef | ast.AsyncFunctionDef) -> None:
         """Check function signature for type annotations."""
-        name = node.name
+        name: str = node.name
 
         # Check return type
         if node.returns is None:
             self._error(node, f"function '{name}' missing return type annotation")
 
         # Check parameters (skip self/cls)
+        arg: ast.arg
         for arg in node.args.args:
             if arg.arg in ("self", "cls"):
                 continue
@@ -174,7 +185,7 @@ class StrictTypeChecker(ast.NodeVisitor):
     def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
         """Track variable as typed."""
         if isinstance(node.target, ast.Name):
-            name = node.target.id
+            name: str = node.target.id
             if name.isupper():
                 if name in self._assigned_constants:
                     self._error(node, f"re-assignment to constant '{name}'")
@@ -187,6 +198,7 @@ class StrictTypeChecker(ast.NodeVisitor):
 
     def visit_Assign(self, node: ast.Assign) -> None:
         """Flag untyped variable assignments inside functions."""
+        target: ast.AST
         for target in node.targets:
             self._check_assign_target(target)
 
@@ -196,7 +208,7 @@ class StrictTypeChecker(ast.NodeVisitor):
     def _check_assign_target(self, node: ast.AST) -> None:
         """Recursively check assignment targets."""
         if isinstance(node, ast.Name):
-            name = node.id
+            name: str = node.id
             if name.isupper():
                 if name in self._assigned_constants:
                     self._error(node, f"re-assignment to constant '{name}'")
@@ -207,6 +219,7 @@ class StrictTypeChecker(ast.NodeVisitor):
                     f"variable '{name}' missing type annotation (use: {name}: Type = value)",
                 )
         elif isinstance(node, (ast.Tuple, ast.List)):
+            element: ast.AST
             for element in node.elts:
                 self._check_assign_target(element)
         # Attributes and Subscripts are allowed (assuming they belong to something already typed)
@@ -222,7 +235,7 @@ class StrictTypeChecker(ast.NodeVisitor):
     def _check_for_target(self, node: ast.AST) -> None:
         """Check for loop targets."""
         if isinstance(node, ast.Name):
-            name = node.id
+            name: str = node.id
             if name.isupper():
                 if name in self._assigned_constants:
                     self._error(node, f"re-assignment to constant '{name}'")
@@ -233,12 +246,14 @@ class StrictTypeChecker(ast.NodeVisitor):
                     f"loop variable '{name}' needs type annotation (consider using typed iterator)",
                 )
         elif isinstance(node, (ast.Tuple, ast.List)):
+            element: ast.AST
             for element in node.elts:
                 self._check_for_target(element)
 
     def visit_With(self, node: ast.With) -> None:
         """With statements - context manager variable should be typed."""
         if self._in_function:
+            item: ast.withitem
             for item in node.items:
                 if item.optional_vars:
                     self._check_with_target(item.optional_vars)
@@ -248,7 +263,7 @@ class StrictTypeChecker(ast.NodeVisitor):
     def _check_with_target(self, node: ast.AST) -> None:
         """Check with statement targets."""
         if isinstance(node, ast.Name):
-            name = node.id
+            name: str = node.id
             if name.isupper():
                 if name in self._assigned_constants:
                     self._error(node, f"re-assignment to constant '{name}'")
@@ -259,6 +274,7 @@ class StrictTypeChecker(ast.NodeVisitor):
                     f"variable '{name}' missing type annotation in 'with' statement",
                 )
         elif isinstance(node, (ast.Tuple, ast.List)):
+            element: ast.AST
             for element in node.elts:
                 self._check_with_target(element)
 
@@ -306,7 +322,7 @@ class StrictTypeChecker(ast.NodeVisitor):
 
     def _error(self, node: ast.AST, message: str) -> None:
         """Add a type error."""
-        pos = cast(_HasPosition, node)
+        pos: _HasPosition = cast(_HasPosition, node)
         self.errors.append(
             TypeError(
                 line=pos.lineno,
@@ -320,14 +336,14 @@ class StrictTypeChecker(ast.NodeVisitor):
 def check_file(filepath: str | Path) -> list[TypeError]:
     """Check a Python file for type annotation violations."""
     filepath = Path(filepath)
-    source = filepath.read_text(encoding="utf-8")
+    source: str = filepath.read_text(encoding="utf-8")
     return check_source(source, str(filepath))
 
 
 def check_source(source: str, filename: str = "<string>") -> list[TypeError]:
     """Check Python source code for type annotation violations."""
     try:
-        tree = ast.parse(source, filename=filename)
+        tree: ast.Module = ast.parse(source, filename=filename)
     except SyntaxError as e:
         return [
             TypeError(
@@ -338,7 +354,7 @@ def check_source(source: str, filename: str = "<string>") -> list[TypeError]:
             )
         ]
 
-    checker = StrictTypeChecker(filename)
+    checker: StrictTypeChecker = StrictTypeChecker(filename)
     checker.visit(tree)
     return checker.errors
 
@@ -350,5 +366,5 @@ def is_strict(source: str) -> tuple[bool, list[TypeError]]:
     Returns:
         (is_valid, errors) - True if no type violations
     """
-    errors = check_source(source)
+    errors: list[TypeError] = check_source(source)
     return len(errors) == 0, errors

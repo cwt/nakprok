@@ -7,6 +7,24 @@ The format is based on
 and this project adheres to
  [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.3.0] - 2026-04-09
+
+### Added for v0.3.0
+
+- **Directory Checking**: `nakprok check <dir>` now recursively checks all
+  `*.py` files in a directory (no `-r` flag needed).
+- **Dogfooding**: The entire `nakprok` codebase now passes its own strict type
+  checking.
+
+### Changed for v0.3.0
+
+- All internal code (`checker.py`, `cli.py`, `runner.py`) annotated to satisfy
+  nakprok's own rules — every local variable and loop variable is explicitly
+  typed.
+- Fixed mypy compatibility: `types.CodeType` for `compile()` results, proper
+  `Path`/`str` separation in CLI.
+- CLI help text updated to document directory support.
+
 ## [v0.2.0] - 2026-04-09
 
 ### Added for v0.2.0

@@ -5,9 +5,10 @@ Validates type annotations, then executes with standard Python.
 """
 
 import sys
+import types
 from pathlib import Path
 
-from .checker import check_source
+from .checker import TypeError, check_source
 
 
 def run_file(filepath: str | Path, args: list[str] | None = None) -> int:
@@ -23,23 +24,24 @@ def run_file(filepath: str | Path, args: list[str] | None = None) -> int:
         print(f"error: file not found: {filepath}", file=sys.stderr)
         return 1
 
-    source = filepath.read_text(encoding="utf-8")
-    filename = str(filepath)
+    source: str = filepath.read_text(encoding="utf-8")
+    filename: str = str(filepath)
 
     # Type check
-    errors = check_source(source, filename)
+    errors: list[TypeError] = check_source(source, filename)
     if errors:
         print(
             f"type check failed ({len(errors)} error{'s' if len(errors) != 1 else ''}):\n",
             file=sys.stderr,
         )
+        error: TypeError
         for error in errors:
             print(f"  {error}", file=sys.stderr)
         return 1
 
     # Execute with standard Python
     try:
-        code = compile(source, filename, "exec")
+        code: types.CodeType = compile(source, filename, "exec")
         sys.argv = [str(filepath)] + (args or [])
         exec(code, {"__name__": "__main__", "__file__": str(filepath)})
         return 0
@@ -56,19 +58,20 @@ def run_source(source: str, filename: str = "<string>") -> int:
         0 if successful, 1 if type errors, 2 if execution error
     """
     # Type check
-    errors = check_source(source, filename)
+    errors: list[TypeError] = check_source(source, filename)
     if errors:
         print(
             f"type check failed ({len(errors)} error{'s' if len(errors) != 1 else ''}):\n",
             file=sys.stderr,
         )
+        error: TypeError
         for error in errors:
             print(f"  {error}", file=sys.stderr)
         return 1
 
     # Execute
     try:
-        code = compile(source, filename, "exec")
+        code: types.CodeType = compile(source, filename, "exec")
         exec(code, {"__name__": "__main__", "__file__": filename})
         return 0
     except Exception as e:

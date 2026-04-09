@@ -3,6 +3,7 @@
 import subprocess
 import sys
 import tempfile
+from pathlib import Path
 
 
 class TestCLI:
@@ -120,3 +121,46 @@ class TestCLI:
         result = self._run_nakprok_entrypoint(filepath)
         assert result.returncode == 0
         assert "direct" in result.stdout
+
+    def test_check_valid_directory(self, tmp_path: Path) -> None:
+        """Test checking a directory with valid files."""
+        (tmp_path / "a.py").write_text("def foo(x: int) -> int:\n    return x\n")
+        (tmp_path / "b.py").write_text("def bar(s: str) -> None:\n    print(s)\n")
+
+        result = self._run_nakprok_entrypoint("check", str(tmp_path))
+        assert result.returncode == 0
+        assert "no type errors" in result.stdout
+
+    def test_check_invalid_directory(self, tmp_path: Path) -> None:
+        """Test checking a directory with an invalid file."""
+        (tmp_path / "good.py").write_text("def foo(x: int) -> int:\n    return x\n")
+        (tmp_path / "bad.py").write_text("def bar(x):  # missing types\n    return x\n")
+
+        result = self._run_nakprok_entrypoint("check", str(tmp_path))
+        assert result.returncode == 1
+        assert "type check failed" in result.stderr
+        assert "bad.py" in result.stderr
+
+    def test_check_empty_directory(self, tmp_path: Path) -> None:
+        """Test checking an empty directory."""
+        result = self._run_nakprok_entrypoint("check", str(tmp_path))
+        assert result.returncode == 0
+        assert "no type errors" in result.stdout
+
+    def test_check_recursive_subdirectories(self, tmp_path: Path) -> None:
+        """Test that subdirectories are checked recursively."""
+        subdir = tmp_path / "sub" / "deep"
+        subdir.mkdir(parents=True)
+        (subdir / "nested.py").write_text("def baz(x: int) -> int:\n    return x\n")
+
+        result = self._run_nakprok_entrypoint("check", str(tmp_path))
+        assert result.returncode == 0
+        assert "no type errors" in result.stdout
+
+    def test_check_directory_no_py_files(self, tmp_path: Path) -> None:
+        """Test checking a directory with no .py files."""
+        (tmp_path / "readme.txt").write_text("not a python file")
+
+        result = self._run_nakprok_entrypoint("check", str(tmp_path))
+        assert result.returncode == 0
+        assert "no Python files found" in result.stderr
