@@ -22,6 +22,33 @@ already know.
 
 ---
 
+## 🆚 How is this different from mypy?
+
+`nakprok` is **not** a replacement for `mypy`. They tackle type safety from
+different angles and work well together:
+
+|            | **mypy**                         | **nakprok**                                              |
+|------------|----------------------------------|----------------------------------------------------------|
+| **When**   | Static analysis (separate step)  | AST validation before execution                          |
+| **What**   | Deep type inference & checking   | Enforces *explicit* type declarations                    |
+| **Scope**  | All valid Python                 | Strict subset (blocks `lambda`, untyped unpacking, etc.) |
+| **Result** | Advisory report (can be ignored) | Hard block — code won't run                              |
+
+Think of it this way:
+
+- **nakprok** ensures every value is *explicitly typed* at the source level.
+- **mypy** then verifies those types are *semantically correct* (e.g., protocol
+  compliance, generic constraints, `int` where `float` is expected).
+
+You can (and should) run both:
+
+```bash
+nakprok check file.py  # Enforces explicit typing
+mypy file.py           # Validates type correctness
+```
+
+---
+
 ## 🛠️ Implemented Rules
 
 `nakprok` currently enforces the following rules inside functions (and classes):
