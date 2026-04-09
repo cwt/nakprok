@@ -45,9 +45,24 @@ class StrictTypeChecker(ast.NodeVisitor):
         self._in_function = False
         self._function_name = ""
         self._typed_vars: set[str] = set()
+        self._assigned_constants: set[str] = set()
+
+    def visit_ClassDef(self, node: ast.ClassDef) -> None:
+        """Track class name as a constant if UPPERCASE."""
+        if node.name.isupper():
+            if node.name in self._assigned_constants:
+                self._error(node, f"re-assignment to constant '{node.name}'")
+            self._assigned_constants.add(node.name)
+
+        self.generic_visit(node)
 
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
         """Validate function has full type annotations."""
+        if node.name.isupper():
+            if node.name in self._assigned_constants:
+                self._error(node, f"re-assignment to constant '{node.name}'")
+            self._assigned_constants.add(node.name)
+
         self._validate_function(node)
 
         old_fn = self._function_name
@@ -61,10 +76,18 @@ class StrictTypeChecker(ast.NodeVisitor):
         # Add parameters to typed variables
         for arg in node.args.args:
             self._typed_vars.add(arg.arg)
+            if arg.arg.isupper():
+                self._assigned_constants.add(arg.arg)
+
         if node.args.vararg:
             self._typed_vars.add(node.args.vararg.arg)
+            if node.args.vararg.arg.isupper():
+                self._assigned_constants.add(node.args.vararg.arg)
+
         if node.args.kwarg:
             self._typed_vars.add(node.args.kwarg.arg)
+            if node.args.kwarg.arg.isupper():
+                self._assigned_constants.add(node.args.kwarg.arg)
 
         # Visit body
         for child in node.body:
@@ -76,6 +99,11 @@ class StrictTypeChecker(ast.NodeVisitor):
 
     def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
         """Same validation for async functions."""
+        if node.name.isupper():
+            if node.name in self._assigned_constants:
+                self._error(node, f"re-assignment to constant '{node.name}'")
+            self._assigned_constants.add(node.name)
+
         self._validate_function(node)
 
         old_fn = self._function_name
@@ -89,10 +117,18 @@ class StrictTypeChecker(ast.NodeVisitor):
         # Add parameters
         for arg in node.args.args:
             self._typed_vars.add(arg.arg)
+            if arg.arg.isupper():
+                self._assigned_constants.add(arg.arg)
+
         if node.args.vararg:
             self._typed_vars.add(node.args.vararg.arg)
+            if node.args.vararg.arg.isupper():
+                self._assigned_constants.add(node.args.vararg.arg)
+
         if node.args.kwarg:
             self._typed_vars.add(node.args.kwarg.arg)
+            if node.args.kwarg.arg.isupper():
+                self._assigned_constants.add(node.args.kwarg.arg)
 
         for child in node.body:
             self.visit(child)
@@ -137,17 +173,22 @@ class StrictTypeChecker(ast.NodeVisitor):
 
     def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
         """Track variable as typed."""
-        if self._in_function:
-            if isinstance(node.target, ast.Name):
-                self._typed_vars.add(node.target.id)
+        if isinstance(node.target, ast.Name):
+            name = node.target.id
+            if name.isupper():
+                if name in self._assigned_constants:
+                    self._error(node, f"re-assignment to constant '{name}'")
+                self._assigned_constants.add(name)
+
+            if self._in_function:
+                self._typed_vars.add(name)
 
         self.generic_visit(node)
 
     def visit_Assign(self, node: ast.Assign) -> None:
         """Flag untyped variable assignments inside functions."""
-        if self._in_function:
-            for target in node.targets:
-                self._check_assign_target(target)
+        for target in node.targets:
+            self._check_assign_target(target)
 
         # Still visit children
         self.generic_visit(node)
@@ -156,8 +197,11 @@ class StrictTypeChecker(ast.NodeVisitor):
         """Recursively check assignment targets."""
         if isinstance(node, ast.Name):
             name = node.id
-            # Allow UPPERCASE module constants even in functions (they're constants)
-            if not name.isupper() and name not in self._typed_vars:
+            if name.isupper():
+                if name in self._assigned_constants:
+                    self._error(node, f"re-assignment to constant '{name}'")
+                self._assigned_constants.add(name)
+            elif self._in_function and name not in self._typed_vars:
                 self._error(
                     node,
                     f"variable '{name}' missing type annotation (use: {name}: Type = value)",
@@ -179,7 +223,11 @@ class StrictTypeChecker(ast.NodeVisitor):
         """Check for loop targets."""
         if isinstance(node, ast.Name):
             name = node.id
-            if name not in self._typed_vars:
+            if name.isupper():
+                if name in self._assigned_constants:
+                    self._error(node, f"re-assignment to constant '{name}'")
+                self._assigned_constants.add(name)
+            elif name not in self._typed_vars:
                 self._error(
                     node,
                     f"loop variable '{name}' needs type annotation (consider using typed iterator)",
@@ -201,7 +249,11 @@ class StrictTypeChecker(ast.NodeVisitor):
         """Check with statement targets."""
         if isinstance(node, ast.Name):
             name = node.id
-            if name not in self._typed_vars:
+            if name.isupper():
+                if name in self._assigned_constants:
+                    self._error(node, f"re-assignment to constant '{name}'")
+                self._assigned_constants.add(name)
+            elif name not in self._typed_vars:
                 self._error(
                     node,
                     f"variable '{name}' missing type annotation in 'with' statement",
@@ -221,24 +273,34 @@ class StrictTypeChecker(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_MatchAs(self, node: ast.MatchAs) -> None:
-        """Flag untyped variable captures in match patterns."""
-        if self._in_function and node.name:
-            # MatchAs(name='foo') is case foo: or case 1 as foo:
-            self._error(
-                node,
-                f"variable '{node.name}' in match pattern needs type annotation (not supported in match, use body annotation)",
-            )
+        """Validate match pattern captures via 'as'."""
+        if node.name:
+            if node.name.isupper():
+                if node.name in self._assigned_constants:
+                    self._error(node, f"re-assignment to constant '{node.name}'")
+                self._assigned_constants.add(node.name)
+            elif self._in_function and node.name not in self._typed_vars:
+                self._error(
+                    node,
+                    f"variable '{node.name}' in match pattern must be pre-declared "
+                    f"(use: {node.name}: Type before match)",
+                )
 
         self.generic_visit(node)
 
     def visit_MatchStar(self, node: ast.MatchStar) -> None:
-        """Flag untyped star captures in match patterns."""
-        if self._in_function and node.name:
-            # MatchStar(name='rest') is case [*rest]:
-            self._error(
-                node,
-                f"variable '{node.name}' in match pattern needs type annotation (not supported in match, use body annotation)",
-            )
+        """Validate match star patterns (e.g., [*rest])."""
+        if node.name:
+            if node.name.isupper():
+                if node.name in self._assigned_constants:
+                    self._error(node, f"re-assignment to constant '{node.name}'")
+                self._assigned_constants.add(node.name)
+            elif self._in_function and node.name not in self._typed_vars:
+                self._error(
+                    node,
+                    f"variable '{node.name}' in match pattern must be pre-declared "
+                    f"(use: {node.name}: Type before match)",
+                )
 
         self.generic_visit(node)
 

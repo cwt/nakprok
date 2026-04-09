@@ -161,14 +161,13 @@ def process(data: int | str) -> str:
             return "unknown"
 """
         valid, errors = is_strict(source)
-        # Now variables 'val' in patterns are flagged as missing type annotations
         assert valid is False
         assert len(errors) == 2
         assert (
-            "variable 'val' in match pattern needs type annotation" in errors[0].message
+            "variable 'val' in match pattern must be pre-declared" in errors[0].message
         )
         assert (
-            "variable 'val' in match pattern needs type annotation" in errors[1].message
+            "variable 'val' in match pattern must be pre-declared" in errors[1].message
         )
 
     def test_match_valid(self) -> None:
@@ -186,6 +185,77 @@ def process(data: int | str) -> str:
 """
         valid, errors = is_strict(source)
         assert valid is True
+
+    def test_match_with_predeclared_binding(self) -> None:
+        source = """
+def process(data: int | str) -> str:
+    val: int | str
+    match data:
+        case int() as val:
+            return f"int: {val}"
+        case str() as val:
+            return f"str: {val}"
+        case _:
+            return "unknown"
+"""
+        valid, errors = is_strict(source)
+        assert valid is True
+
+    def test_match_star_pattern_predeclared(self) -> None:
+        source = """
+def get_rest(items: list[int]) -> list[int]:
+    first: int
+    rest: list[int]
+    match items:
+        case [first, *rest]:
+            return rest
+        case _:
+            return []
+"""
+        valid, errors = is_strict(source)
+        assert valid is True
+
+    def test_constant_immutability(self) -> None:
+        source = """
+MAX_SIZE = 100
+MAX_SIZE = 200  # Should be blocked
+"""
+        valid, errors = is_strict(source)
+        assert valid is False
+        assert "re-assignment to constant 'MAX_SIZE'" in errors[0].message
+
+    def test_local_constant_immutability(self) -> None:
+        source = """
+def main() -> None:
+    LIMIT = 10
+    LIMIT = 20  # Should be blocked
+"""
+        valid, errors = is_strict(source)
+        assert valid is False
+        assert "re-assignment to constant 'LIMIT'" in errors[0].message
+
+    def test_constant_shadowing_blocked(self) -> None:
+        source = """
+GLOBAL_VAL = 1
+def main() -> None:
+    GLOBAL_VAL = 2  # Should be blocked as re-assignment or shadowing
+"""
+        valid, errors = is_strict(source)
+        assert valid is False
+        assert "re-assignment to constant 'GLOBAL_VAL'" in errors[0].message
+
+    def test_local_constants_different_scopes(self) -> None:
+        source = """
+def foo() -> None:
+    X = 1
+def bar() -> None:
+    X = 2  # Should this be blocked?
+"""
+        valid, errors = is_strict(source)
+        # Based on current implementation, this will be blocked.
+        # If we want to allow this, we need scope-aware constants.
+        assert valid is False
+        assert "re-assignment to constant 'X'" in errors[0].message
 
     def test_attribute_assignment(self) -> None:
         source = """
