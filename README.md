@@ -1,5 +1,7 @@
 # nakprok - Python with Enforced Static Typing
 
+[![PyPI Version](https://img.shields.io/pypi/v/nakprok.svg)](https://pypi.org/project/nakprok/)
+
 **Same Python syntax. Zero dynamic typing.**
 
 `nakprok` (นาคปรก) is a subset of Python that enforces static type annotations
