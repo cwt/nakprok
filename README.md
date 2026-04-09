@@ -150,6 +150,14 @@ include:
 
 ### Installation
 
+**For users** (from PyPI):
+
+```bash
+pip install nakprok
+```
+
+**For developers** (from a cloned repo):
+
 ```bash
 pip install -e .
 ```
