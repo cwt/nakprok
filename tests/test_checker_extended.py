@@ -312,6 +312,92 @@ def foo() -> int:
         assert len(errors) == 2
 
 
+class TestNamedExpressions:
+    """Test walrus operator (:=) requires pre-declared types."""
+
+    def test_walrus_untyped_in_function(self) -> None:
+        source = """
+def test() -> None:
+    if (x := 10) > 5:
+        print(x)
+"""
+        valid, errors = is_strict(source)
+        assert valid is False
+        assert len(errors) == 1
+        assert (
+            "variable 'x' in named expression must be pre-declared" in errors[0].message
+        )
+
+    def test_walrus_predeclared_valid(self) -> None:
+        source = """
+def test() -> None:
+    x: int
+    if (x := 10) > 5:
+        print(x)
+"""
+        valid, errors = is_strict(source)
+        assert valid is True
+
+    def test_walrus_predeclared_with_initial_valid(self) -> None:
+        source = """
+def test() -> None:
+    x: int = 0
+    if (x := 10) > 5:
+        print(x)
+"""
+        valid, errors = is_strict(source)
+        assert valid is True
+
+    def test_walrus_module_level_valid(self) -> None:
+        source = """
+if (x := 10) > 5:
+    print(x)
+"""
+        valid, errors = is_strict(source)
+        assert valid is True
+
+    def test_walrus_uppercase_constant_reassignment(self) -> None:
+        source = """
+def test() -> None:
+    MAX_VAL: int = 100
+    if (MAX_VAL := 50) > 5:
+        print(MAX_VAL)
+"""
+        valid, errors = is_strict(source)
+        assert valid is False
+        assert len(errors) == 1
+        assert "re-assignment to constant 'MAX_VAL'" in errors[0].message
+
+    def test_walrus_in_while_loop(self) -> None:
+        source = """
+def test() -> None:
+    line: str
+    while (line := input()) != "quit":
+        print(line)
+"""
+        valid, errors = is_strict(source)
+        assert valid is True
+
+    def test_walrus_in_list_comprehension(self) -> None:
+        source = """
+def test() -> list[int]:
+    y: int
+    return [y for x in range(5) if (y := x * 2) > 3]
+"""
+        valid, errors = is_strict(source)
+        assert valid is True
+
+    def test_walrus_untyped_multiple_uses(self) -> None:
+        source = """
+def test() -> None:
+    if (a := 1) > 0 and (b := 2) > 0:
+        print(a, b)
+"""
+        valid, errors = is_strict(source)
+        assert valid is False
+        assert len(errors) == 2
+
+
 class TestCheckFile:
     """Test check_file function."""
 

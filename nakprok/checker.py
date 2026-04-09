@@ -288,6 +288,27 @@ class StrictTypeChecker(ast.NodeVisitor):
 
         self.generic_visit(node)
 
+    def visit_NamedExpr(self, node: ast.NamedExpr) -> None:
+        """Validate walrus operator (:=) - variable must be pre-declared."""
+        if isinstance(node.target, ast.Name):
+            name: str = node.target.id
+            if name.isupper():
+                if name in self._assigned_constants:
+                    self._error(node, f"re-assignment to constant '{name}'")
+                self._assigned_constants.add(name)
+            elif self._in_function and name not in self._typed_vars:
+                self._error(
+                    node,
+                    f"variable '{name}' in named expression must be pre-declared "
+                    f"(use: {name}: Type before walrus operator)",
+                )
+            else:
+                # Track as typed if already declared
+                if self._in_function:
+                    self._typed_vars.add(name)
+
+        self.generic_visit(node)
+
     def visit_MatchAs(self, node: ast.MatchAs) -> None:
         """Validate match pattern captures via 'as'."""
         if node.name:
