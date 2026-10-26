@@ -60,6 +60,24 @@ class TestRunFile:
         exit_code: int = run_file(filepath, ["--arg1", "--arg2"])
         assert exit_code == 0
 
+    def test_run_file_with_sibling_import(self, tmp_path: Path) -> None:
+        """A script should be able to import a module next to it."""
+        helper: Path = tmp_path / "helper.py"
+        helper.write_text("VALUE: int = 42\n")
+        script: Path = tmp_path / "main.py"
+        script.write_text(
+            'import helper\n'
+            '\n'
+            'def main() -> None:\n'
+            '    print(helper.VALUE)\n'
+            '\n'
+            'if __name__ == "__main__":\n'
+            '    main()\n'
+        )
+
+        exit_code: int = run_file(script)
+        assert exit_code == 0
+
     def test_run_file_path_object(self) -> None:
         """Test that run_file accepts Path objects."""
         f: IO[str]

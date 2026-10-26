@@ -3,6 +3,7 @@
 import subprocess
 import sys
 import tempfile
+from importlib.metadata import version
 from pathlib import Path
 from typing import IO
 
@@ -50,8 +51,9 @@ class TestCLI:
         result: subprocess.CompletedProcess[str] = self._run_nakprok_entrypoint(
             "--version"
         )
+        expected: str = version("nakprok")
         assert result.returncode == 0
-        assert "nakprok" in result.stdout
+        assert result.stdout.strip() == f"nakprok {expected}"
 
     def test_check_valid_file(self) -> None:
         f: IO[str]
@@ -84,6 +86,13 @@ class TestCLI:
         result: subprocess.CompletedProcess[str] = self._run_nakprok_entrypoint("check")
         assert result.returncode == 1
         assert "missing file argument" in result.stderr
+
+    def test_check_missing_path(self) -> None:
+        result: subprocess.CompletedProcess[str] = self._run_nakprok_entrypoint(
+            "check", "/nonexistent/file.py"
+        )
+        assert result.returncode == 1
+        assert "path not found" in result.stderr
 
     def test_run_missing_file_arg(self) -> None:
         result: subprocess.CompletedProcess[str] = self._run_nakprok_entrypoint("run")

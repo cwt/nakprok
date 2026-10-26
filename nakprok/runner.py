@@ -39,6 +39,11 @@ def run_file(filepath: str | Path, args: list[str] | None = None) -> int:
             print(f"  {error}", file=sys.stderr)
         return 1
 
+    # Make sibling imports work like `python file.py`.
+    old_path: list[str] = sys.path.copy()
+    old_argv: list[str] = sys.argv.copy()
+    sys.path.insert(0, str(filepath.resolve().parent))
+
     # Execute with standard Python
     try:
         code: types.CodeType = compile(source, filename, "exec")
@@ -48,6 +53,9 @@ def run_file(filepath: str | Path, args: list[str] | None = None) -> int:
     except Exception as e:
         print(f"runtime error: {e}", file=sys.stderr)
         return 2
+    finally:
+        sys.path[:] = old_path
+        sys.argv[:] = old_argv
 
 
 def run_source(source: str, filename: str = "<string>") -> int:

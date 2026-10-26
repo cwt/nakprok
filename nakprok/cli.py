@@ -67,6 +67,10 @@ def main() -> None:
             sys.exit(1)
 
         path: Path = Path(args[1])
+        if not path.exists():
+            print(f"error: path not found: {path}", file=sys.stderr)
+            sys.exit(1)
+
         errors: list[TypeError] = _check_path(path)
 
         if errors:
