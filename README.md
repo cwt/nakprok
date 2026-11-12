@@ -1,6 +1,10 @@
 # nakprok - Python with Enforced Static Typing
 
+[![License](https://img.shields.io/pypi/l/nakprok)](LICENSE)
+[![Python Compatibility](https://img.shields.io/pypi/pyversions/nakprok)](#installation)
 [![PyPI Version](https://img.shields.io/pypi/v/nakprok.svg)](https://pypi.org/project/nakprok/)
+[![Ask DeepWiki](https://img.shields.io/badge/Ask-DeepWiki-blue)](https://deepwiki.com/cwt/nakprok)<!-- [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/cwt/nakprok) -->
+[![View Code Wiki](https://assets.codewiki.google/readme-badge/static.svg)](https://codewiki.google/github.com/cwt/nakprok?utm_source=badge&utm_medium=github&utm_campaign=github.com/cwt/nakprok)
 
 **Same Python syntax. Explicit type annotations required.**
 
